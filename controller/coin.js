@@ -48,7 +48,7 @@ module.exports = {
     
     console.timeEnd('reading')
   },
-  getCoinPriceDay: async (req, res, next) => {
+  getCoinPrice24hr: async (req, res, next) => {
     const { dynamoClient } = global
 
     // 取得該 coin 的 segment
@@ -72,7 +72,7 @@ module.exports = {
 
     // 向 DynamoDB get item
     const data = await dynamoClient.query({
-      TableName: 'CoinPriceDay',
+      TableName: 'CoinPrice24hr',
       KeyConditionExpression: '#segment = :segment and #time >= :start',
       ExpressionAttributeNames: { '#segment': 'segment', '#time': 'time' },
       ExpressionAttributeValues: { ':segment': coinSegment, ':start': start }
@@ -87,7 +87,155 @@ module.exports = {
     for (let coinPrice of coinPriceList) {
       coinPriceSeries = coinPriceSeries.concat(coinPrice)
     }
-    const dataPoints = 24 * 60 / 5 // 24 小時的圖，每五分鐘為一點，總共需要 24 * 60 / 5 這麼多點
+    const dataPoints = 24 * 60 / 10 // 24 小時的圖，每 10 分鐘為一點，總共需要 24 * 60 / 10 這麼多點
     return res.status(200).json(coinPriceSeries.slice(0, dataPoints))
+  },
+  getCoinPrice7day: async (req, res, next) => {
+    const { dynamoClient } = global
+
+    // 取得該 coin 的 segment
+    const { coin } = req.params
+    const coinSegment = await getCoinPriceSegment(coin)
+    if (!coinSegment) return res.status(400).send({ message: 'bad parameters' })
+
+    // 計算要從哪個時間點開始拿 
+    const now = new Date()
+    const nowTime = now.getTime()
+    now.setHours(0, 0, 0, 0)
+    const dateMidTime = now.getTime()
+    let start = dateMidTime - 1000 * 60 * 60 * 24 * 7
+
+    // 向 DynamoDB get item
+    const data = await dynamoClient.query({
+      TableName: 'CoinPrice7day',
+      KeyConditionExpression: '#segment = :segment and #time >= :start',
+      ExpressionAttributeNames: { '#segment': 'segment', '#time': 'time' },
+      ExpressionAttributeValues: { ':segment': coinSegment, ':start': start }
+    }).promise()
+
+    // 將 items 從日期由近排到遠
+    let items = data.Items
+    items.sort((prev, next) => next.time - prev.time)
+    let coinPriceList = items.map(i => i.coinPrice[coin])
+    
+    let coinPriceSeries = []
+    for (let coinPrice of coinPriceList) {
+      coinPriceSeries = coinPriceSeries.concat(coinPrice)
+    }
+    const dataPoints = 7 * 24 // 7 天的圖，每 1 小時為一點，總共需要 7 * 24 這麼多點
+    return res.status(200).json(coinPriceSeries.slice(0, dataPoints))
+  },
+  getCoinPrice30day: async (req, res, next) => {
+    const { dynamoClient } = global
+
+    // 取得該 coin 的 segment
+    const { coin } = req.params
+    const coinSegment = await getCoinPriceSegment(coin)
+    if (!coinSegment) return res.status(400).send({ message: 'bad parameters' })
+
+    // 計算要從哪個時間點開始拿 
+    const now = new Date()
+    const nowTime = now.getTime()
+    now.setHours(0, 0, 0, 0)
+    const dateMidTime = now.getTime()
+    let start = dateMidTime - 1000 * 60 * 60 * 24 * 30
+
+    // 向 DynamoDB get item
+    const data = await dynamoClient.query({
+      TableName: 'CoinPrice30day',
+      KeyConditionExpression: '#segment = :segment and #time >= :start',
+      ExpressionAttributeNames: { '#segment': 'segment', '#time': 'time' },
+      ExpressionAttributeValues: { ':segment': coinSegment, ':start': start }
+    }).promise()
+
+    // 將 items 從日期由近排到遠
+    let items = data.Items
+    items.sort((prev, next) => next.time - prev.time)
+    let coinPriceList = items.map(i => i.coinPrice[coin])
+    
+    let coinPriceSeries = []
+    for (let coinPrice of coinPriceList) {
+      coinPriceSeries = coinPriceSeries.concat(coinPrice)
+    }
+    const dataPoints = 30 * 24 / 6 // 30 天的圖，每 6 小時為一點，總共需要 30 * 24 / 6 這麼多點
+    return res.status(200).json(coinPriceSeries.slice(0, dataPoints))
+  },
+  getCoinOHLC24hr: async (req, res, next) => {
+    const { dynamoClient } = global
+
+    // 取得該 coin 的 segment
+    const { coin } = req.params
+    const coinSegment = await getCoinPriceSegment(coin)
+    if (!coinSegment) return res.status(400).send({ message: 'bad parameters' })
+
+    // 向 DynamoDB get item
+    const data = await dynamoClient.get({
+      TableName: 'CoinOHLC24hr',
+      Key: {
+        segment: coinSegment
+      }
+    }).promise()
+
+    const item = data.Item
+    if (!item) return res.status(200).json([])
+
+    const { ohlc } = item
+    if (coin in ohlc) {
+      return res.status(200).json(ohlc[coin])
+    } else {
+      res.status(200).json([])
+    }
+  },
+  getCoinOHLC7day: async (req, res, next) => {
+    const { dynamoClient } = global
+
+    // 取得該 coin 的 segment
+    const { coin } = req.params
+    const coinSegment = await getCoinPriceSegment(coin)
+    if (!coinSegment) return res.status(400).send({ message: 'bad parameters' })
+
+    // 向 DynamoDB get item
+    const data = await dynamoClient.get({
+      TableName: 'CoinOHLC7day',
+      Key: {
+        segment: coinSegment
+      }
+    }).promise()
+
+    const item = data.Item
+    if (!item) return res.status(200).json([])
+
+    const { ohlc } = item
+    if (coin in ohlc) {
+      return res.status(200).json(ohlc[coin])
+    } else {
+      res.status(200).json([])
+    }
+  },
+  getCoinOHLC30day: async (req, res, next) => {
+    const { dynamoClient } = global
+
+    // 取得該 coin 的 segment
+    const { coin } = req.params
+    const coinSegment = await getCoinPriceSegment(coin)
+    if (!coinSegment) return res.status(400).send({ message: 'bad parameters' })
+
+    // 向 DynamoDB get item
+    const data = await dynamoClient.get({
+      TableName: 'CoinOHLC30day',
+      Key: {
+        segment: coinSegment
+      }
+    }).promise()
+
+    const item = data.Item
+    if (!item) return res.status(200).json([])
+
+    const { ohlc } = item
+    if (coin in ohlc) {
+      return res.status(200).json(ohlc[coin])
+    } else {
+      res.status(200).json([])
+    }
   }
 }
