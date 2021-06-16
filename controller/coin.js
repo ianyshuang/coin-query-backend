@@ -17,7 +17,6 @@ module.exports = {
     
     // 一次發出多個 get item 並使用 (不 await 進而加快 total time)
     // 並使用 Promise.all() 來取得所有回傳結果
-    console.time('reading')
     const promiseList = []
     for (let i = 0; i < fetchItems; i++) {
       let time = nearest - i * fiveMin
@@ -46,7 +45,6 @@ module.exports = {
         return res.status(500).json({ message: error.message })
       })
     
-    console.timeEnd('reading')
   },
   getCoinPrice24hr: async (req, res, next) => {
     const { dynamoClient } = global
@@ -85,10 +83,10 @@ module.exports = {
     
     let coinPriceSeries = []
     for (let coinPrice of coinPriceList) {
-      coinPriceSeries = coinPriceSeries.concat(coinPrice)
+      coinPriceSeries = coinPriceSeries.concat(coinPrice.reverse()) // 每個 coinPrice 是最舊的 price 在最前面，要將其 reverse 成最新的在最前面
     }
     const dataPoints = 24 * 60 / 10 // 24 小時的圖，每 10 分鐘為一點，總共需要 24 * 60 / 10 這麼多點
-    return res.status(200).json(coinPriceSeries.slice(0, dataPoints))
+    return res.status(200).json(coinPriceSeries.slice(0, dataPoints).reverse()) // 給前端的要再 reverse 一次（最舊的在最前面）
   },
   getCoinPrice7day: async (req, res, next) => {
     const { dynamoClient } = global
@@ -120,10 +118,10 @@ module.exports = {
     
     let coinPriceSeries = []
     for (let coinPrice of coinPriceList) {
-      coinPriceSeries = coinPriceSeries.concat(coinPrice)
+      coinPriceSeries = coinPriceSeries.concat(coinPrice.reverse()) // 每個 coinPrice 是最舊的 price 在最前面，要將其 reverse 成最新的在最前面
     }
     const dataPoints = 7 * 24 // 7 天的圖，每 1 小時為一點，總共需要 7 * 24 這麼多點
-    return res.status(200).json(coinPriceSeries.slice(0, dataPoints))
+    return res.status(200).json(coinPriceSeries.slice(0, dataPoints).reverse()) // 給前端的要再 reverse 一次（最舊的在最前面）
   },
   getCoinPrice30day: async (req, res, next) => {
     const { dynamoClient } = global
@@ -155,10 +153,10 @@ module.exports = {
     
     let coinPriceSeries = []
     for (let coinPrice of coinPriceList) {
-      coinPriceSeries = coinPriceSeries.concat(coinPrice)
+      coinPriceSeries = coinPriceSeries.concat(coinPrice.reverse()) // 每個 coinPrice 是最舊的 price 在最前面，要將其 reverse 成最新的在最前面
     }
     const dataPoints = 30 * 24 / 6 // 30 天的圖，每 6 小時為一點，總共需要 30 * 24 / 6 這麼多點
-    return res.status(200).json(coinPriceSeries.slice(0, dataPoints))
+    return res.status(200).json(coinPriceSeries.slice(0, dataPoints).reverse()) // 給前端的要再 reverse 一次（最舊的在最前面）
   },
   getCoinOHLC24hr: async (req, res, next) => {
     const { dynamoClient } = global
