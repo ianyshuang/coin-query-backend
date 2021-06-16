@@ -1,7 +1,14 @@
-const port = process.env.PORT || 3000
+const port = process.env.PORT || 80
 const express = require('express')
+const cors = require('cors')
+const apicache = require('apicache')
+
 const app = express()
 
+app.use(cors())
+
+const cache = apicache.middleware
+app.use(cache('1 minute'))
 
 app.use('/', require('./router'))
 app.get('/', (req, res) => {
